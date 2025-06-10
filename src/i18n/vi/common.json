@@ -1,0 +1,9 @@
+{
+  "INVALID_EMAIL": "Định dạng email không hợp lệ",
+  "INVALID_CREDENTIALS": "Email hoặc mật khẩu không hợp lệ",
+  "ERROR_CREATING_RESERVATION": "Đã xảy ra lỗi khi tạo đặt chỗ",
+  "ERROR_FETCHING_CLINIC_LIST": "Đã xảy ra lỗi khi lấy danh sách phòng khám",
+  "ERROR_CREATING_CLINIC": "Đã xảy ra lỗi khi tạo phòng khám",
+  "ERROR_FETCHING_RATINGS_LIST": "Đã xảy ra lỗi khi lấy danh sách đánh giá",
+  "ERROR_CREATING_RATING": "Đã xảy ra lỗi khi tạo đánh giá"
+}

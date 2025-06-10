@@ -1,0 +1,6 @@
+services:
+  backend:
+    build: .
+    ports:
+      - '${PORT}:${PORT}'
+    tty: true

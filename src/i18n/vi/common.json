@@ -5,5 +5,6 @@
   "ERROR_FETCHING_CLINIC_LIST": "Đã xảy ra lỗi khi lấy danh sách phòng khám",
   "ERROR_CREATING_CLINIC": "Đã xảy ra lỗi khi tạo phòng khám",
   "ERROR_FETCHING_RATINGS_LIST": "Đã xảy ra lỗi khi lấy danh sách đánh giá",
-  "ERROR_CREATING_RATING": "Đã xảy ra lỗi khi tạo đánh giá"
+  "ERROR_CREATING_RATING": "Đã xảy ra lỗi khi tạo đánh giá",
+  "ERROR_FETCHING_CLINIC_DETAIL": "Đã xảy ra lỗi khi lấy chi tiết phòng khám"
 }

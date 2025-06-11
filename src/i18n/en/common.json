@@ -5,5 +5,6 @@
   "ERROR_FETCHING_CLINIC_LIST": "An error occurred while fetching the clinic list",
   "ERROR_CREATING_CLINIC": "An error occurred while creating the clinic",
   "ERROR_FETCHING_RATINGS_LIST": "An error occurred while fetching the ratings list",
-  "ERROR_CREATING_RATING": "An error occurred while creating the rating"
+  "ERROR_CREATING_RATING": "An error occurred while creating the rating",
+  "ERROR_FETCHING_CLINIC_DETAIL": "An error occurred while fetching clinic details"
 }

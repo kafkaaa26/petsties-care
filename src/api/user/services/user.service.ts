@@ -81,6 +81,42 @@ export class UserService {
   }
 
   @Logger()
+  async getClinicDetail(clinicId: string): Promise<any> {
+    try {
+      if (!clinicId) {
+        throw new Error('Clinic ID is required to fetch clinic details.');
+      }
+
+      const clinic = await this.clinicRepository
+        .createQueryBuilder('clinic')
+        .where('clinic.clinicId = :clinicId', { clinicId })
+        .andWhere('clinic.isDeleted = :clinicIsDeleted', {
+          clinicIsDeleted: false,
+        })
+        .leftJoinAndSelect(
+          'clinic.ratings',
+          'rating',
+          'rating.isAccepted = :isAccepted',
+          {
+            isAccepted: true,
+          },
+        )
+        .getOne();
+
+      if (!clinic) {
+        throw new Error('Clinic not found or has been deleted.');
+      }
+
+      return clinic;
+    } catch (error) {
+      logger.error('Error fetching clinic detail:', error);
+      throw new BadRequestException(
+        this.commonService.translate('common.ERROR_FETCHING_CLINIC_DETAIL'),
+      );
+    }
+  }
+
+  @Logger()
   async listRatings(query: RatingQuery): Promise<any> {
     try {
       const clinicId = query.clinicId;

@@ -18,6 +18,12 @@ export class ClinicRepository extends Repository<ClinicEntity> {
       { isDeleted: false },
     );
 
+    if (query.clinicId) {
+      baseQuery.andWhere('clinic.clinicId = :clinicId', {
+        clinicId: query.clinicId,
+      });
+    }
+
     if (query.orderBy) {
       baseQuery.orderBy(`clinic.${query.orderBy}`, query.orderType || 'ASC');
     } else {
@@ -49,7 +55,7 @@ export class ClinicRepository extends Repository<ClinicEntity> {
 
   private selectClinicFields() {
     return [
-      'clinic.clinic_id',
+      'clinic.clinicId',
       'clinic.clinicName',
       'clinic.clinicDescription',
       'clinic.clinicEmail',

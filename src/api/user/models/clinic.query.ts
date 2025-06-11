@@ -8,4 +8,9 @@ export class ClinicQuery extends BaseQuery {
   @IsString()
   @Transform((v) => Trim(v.value) || '')
   county: string;
+
+  @IsOptional()
+  @IsString()
+  @Transform((v) => Trim(v.value) || '')
+  clinicId: string;
 }

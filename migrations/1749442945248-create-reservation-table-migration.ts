@@ -10,10 +10,11 @@ export class CreateReservationTableMigration1749442945248
         name: 'reservations',
         columns: [
           {
-            name: 'reservation_id',
-            type: 'varchar',
+            name: 'id',
+            type: 'bigint',
             isPrimary: true,
-            default: 'uuid_generate_v4()',
+            isGenerated: true,
+            generationStrategy: 'increment',
           },
           {
             name: 'pet_type',

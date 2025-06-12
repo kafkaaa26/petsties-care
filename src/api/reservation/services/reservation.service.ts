@@ -22,13 +22,15 @@ export class ReservationService {
   @Logger()
   async create(request: ReservationRequest): Promise<any> {
     try {
-      const emailRegex =
-        /^[^\s@.',][^\s@,]*(?:\.[^\s@,]+)*@[^\s@]+(?:\.com|(?:\.[^\s@]+)*\.com(?:\.[^\s@]+)*)$/;
+      if (request.email) {
+        const emailRegex =
+          /^[^\s@.',][^\s@,]*(?:\.[^\s@,]+)*@[^\s@]+(?:\.com|(?:\.[^\s@]+)*\.com(?:\.[^\s@]+)*)$/;
 
-      if (!emailRegex.test(request.email)) {
-        throw new BadRequestException(
-          this.commonService.translate('common.INVALID_EMAIL'),
-        );
+        if (!emailRegex.test(request.email)) {
+          throw new BadRequestException(
+            this.commonService.translate('common.INVALID_EMAIL'),
+          );
+        }
       }
 
       const clinicId = request.clinicId;
@@ -46,17 +48,15 @@ export class ReservationService {
 
       const newReservation = new ReservationEntity();
 
-      const reservationId = this.commonService.generateUUIDv4();
       const now = moment().unix();
 
-      newReservation.reservationId = reservationId;
       newReservation.petType = request.petType;
       newReservation.serviceType = request.serviceType;
-      newReservation.petState = request.petState;
+      newReservation.petState = request.petState || '';
       newReservation.userName = request.userName;
-      newReservation.email = request.email;
+      newReservation.email = request.email || '';
       newReservation.phoneNumber = request.phoneNumber;
-      newReservation.address = request.address;
+      newReservation.address = request.address || '';
       newReservation.dateReservation = request.dateReservation;
       newReservation.clinicId = request.clinicId;
       newReservation.createdAt = now;
@@ -71,11 +71,20 @@ export class ReservationService {
             { clinicId },
             { reservationCount: () => 'reservationCount + 1' },
           );
-          savedReservation.email &&
-            (await this.sendReservationInfoEmail(savedReservation, clinic));
+
+          const no = this.genNo(savedReservation.id, savedReservation.clinicId);
+
+          // savedReservation.email &&
+          //   (await this.sendReservationInfoEmail(savedReservation, clinic, no));
           logger.log(`Successfully sent email to ${savedReservation.email}`);
 
-          return savedReservation;
+          return {
+            ...savedReservation,
+            no,
+            clinicName: clinic.clinicName,
+            clinicAddress: clinic.clinicAddress,
+            clinicPhone: clinic.clinicPhone,
+          };
         },
       );
 
@@ -96,6 +105,7 @@ export class ReservationService {
   async sendReservationInfoEmail(
     reservation: ReservationEntity,
     clinic: ClinicEntity,
+    no: string,
   ): Promise<void> {
     const { email, userName, phoneNumber, address, dateReservation } =
       reservation;
@@ -132,6 +142,7 @@ export class ReservationService {
           - Địa chỉ: ${address}
           
           🔹 Thông tin lịch hẹn:
+          - Mã đặt lịch: ${no}
           - Ngày hẹn: ${dateReservation}
           - Phòng khám: ${clinicName}
           - Địa chỉ: ${clinicAddress}
@@ -168,6 +179,7 @@ export class ReservationService {
             <div style="margin-top: 20px;">
               <h3>🔹 Thông tin lịch hẹn:</h3>
               <ul>
+                <li><strong>Mã đặt lịch:</strong> ${no}</li>
                 <li><strong>Ngày hẹn:</strong> ${dateReservation}</li>
                 <li><strong>Phòng khám:</strong> ${clinicName}</li>
                 <li><strong>Địa chỉ:</strong> ${clinicAddress}</li>
@@ -208,5 +220,11 @@ export class ReservationService {
     } catch (error) {
       throw error;
     }
+  }
+
+  genNo(reservationId: number, clinicId: string): string {
+    const clinicPrefix = clinicId.slice(0, 2).toUpperCase();
+    const reservationSuffix = reservationId.toString().padStart(4, '0');
+    return `STT${clinicPrefix}${reservationSuffix}`;
   }
 }

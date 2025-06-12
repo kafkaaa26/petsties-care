@@ -13,7 +13,7 @@ export class ReservationRequest {
   @IsEnum(ServiceTypeEnum)
   serviceType: ServiceTypeEnum;
 
-  @IsNotEmpty()
+  @IsOptional()
   @IsString()
   @Transform((v) => Trim(v.value) || '')
   petState: string;

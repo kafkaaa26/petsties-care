@@ -1,11 +1,17 @@
-import { Entity, Column, PrimaryColumn, ManyToOne, JoinColumn } from 'typeorm';
+import {
+  Entity,
+  Column,
+  ManyToOne,
+  JoinColumn,
+  PrimaryGeneratedColumn,
+} from 'typeorm';
 import { BaseEntity } from './base.entity';
 import { ClinicEntity } from './clinic.entity';
 
 @Entity('reservations')
 export class ReservationEntity extends BaseEntity {
-  @PrimaryColumn({ name: 'reservation_id', type: 'varchar' })
-  reservationId: string;
+  @PrimaryGeneratedColumn({ name: 'id', type: 'bigint' })
+  id: number;
 
   @Column({ name: 'pet_type', type: 'varchar' })
   petType: string;

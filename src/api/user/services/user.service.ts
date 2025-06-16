@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { ClinicQuery } from '@api/user/models/clinic.query';
 import { CommonService } from '@core/services/common.service';
 import { Logger } from '@core/decorators/logger.decorator';
@@ -75,7 +79,7 @@ export class UserService {
     } catch (error) {
       logger.error('Error fetching clinic list:', error);
       throw new BadRequestException(
-        this.commonService.translate('common.ERROR_FETCHING_CLINIC_LIST'),
+        'Error fetching clinic list. Please try again later.',
       );
     }
   }
@@ -84,7 +88,9 @@ export class UserService {
   async getClinicDetail(clinicId: string): Promise<any> {
     try {
       if (!clinicId) {
-        throw new Error('Clinic ID is required to fetch clinic details.');
+        throw new BadRequestException(
+          'Clinic ID is required to fetch clinic details.',
+        );
       }
 
       const clinic = await this.clinicRepository
@@ -104,15 +110,13 @@ export class UserService {
         .getOne();
 
       if (!clinic) {
-        throw new Error('Clinic not found or has been deleted.');
+        throw new NotFoundException('Clinic not found or has been deleted.');
       }
 
       return clinic;
     } catch (error) {
       logger.error('Error fetching clinic detail:', error);
-      throw new BadRequestException(
-        this.commonService.translate('common.ERROR_FETCHING_CLINIC_DETAIL'),
-      );
+      throw error;
     }
   }
 
@@ -121,7 +125,9 @@ export class UserService {
     try {
       const clinicId = query.clinicId;
       if (!clinicId) {
-        throw new Error('Clinic ID is required to fetch ratings.');
+        throw new BadRequestException(
+          'Clinic ID is required to fetch ratings.',
+        );
       }
 
       const clinic = await this.clinicRepository
@@ -133,7 +139,7 @@ export class UserService {
         .getOne();
 
       if (!clinic) {
-        throw new Error('Clinic not found or has been deleted.');
+        throw new NotFoundException('Clinic not found or has been deleted.');
       }
 
       const { ratings, total, totalPages } =
@@ -161,9 +167,7 @@ export class UserService {
       };
     } catch (error) {
       logger.error('Error fetching ratings list:', error);
-      throw new BadRequestException(
-        this.commonService.translate('common.ERROR_FETCHING_RATINGS_LIST'),
-      );
+      throw error;
     }
   }
 
@@ -202,13 +206,7 @@ export class UserService {
       return await this.clinicRepository.save(newRating);
     } catch (error) {
       logger.error('Error during clinic creation:', error);
-      if (error instanceof BadRequestException) {
-        throw error; // Re-throw BadRequestException
-      }
-
-      throw new BadRequestException(
-        this.commonService.translate('common.ERROR_CREATING_CLINIC'),
-      );
+      throw error;
     }
   }
 
@@ -217,7 +215,9 @@ export class UserService {
     try {
       const clinicId = request.clinicId;
       if (!clinicId) {
-        throw new Error('Clinic ID is required to create a rating.');
+        throw new BadRequestException(
+          'Clinic ID is required to create a rating.',
+        );
       }
 
       const clinic = await this.clinicRepository
@@ -237,7 +237,7 @@ export class UserService {
         .getOne();
 
       if (!clinic) {
-        throw new Error('Clinic not found or has been deleted.');
+        throw new NotFoundException('Clinic not found or has been deleted.');
       }
 
       const newRating = new RatingEntity();
@@ -274,13 +274,7 @@ export class UserService {
       ]);
     } catch (error) {
       logger.error('Error during rating creation:', error);
-      if (error instanceof BadRequestException) {
-        throw error; // Re-throw BadRequestException
-      }
-
-      throw new BadRequestException(
-        this.commonService.translate('common.ERROR_CREATING_RATING'),
-      );
+      throw error;
     }
   }
 }

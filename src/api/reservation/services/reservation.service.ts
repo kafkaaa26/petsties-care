@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { CommonService } from '@core/services/common.service';
 import { Logger } from '@core/decorators/logger.decorator';
 import { logger } from '@core/models/logger';
@@ -10,6 +14,9 @@ import moment from 'moment';
 import { ReservationRepository } from '@repositories/reservation.repository';
 import { ClinicRepository } from '@repositories/clinic.repository';
 import { ClinicEntity } from '@entities/clinic.entity';
+import { ReservationQuery } from '../models/reservation.query';
+import { PetTypeEnum } from '@core/enums/pet-type.enum';
+import { ServiceTypeEnum } from '@core/enums/service-type.enum';
 
 @Injectable()
 export class ReservationService {
@@ -18,6 +25,44 @@ export class ReservationService {
     private readonly clinicRepository: ClinicRepository,
     private readonly commonService: CommonService,
   ) {}
+
+  @Logger()
+  async getListReservation(query: ReservationQuery): Promise<any[]> {
+    try {
+      const { phoneNumber } = query;
+      if (!phoneNumber) {
+        throw new BadRequestException(
+          'Phone number is required to fetch reservations.',
+        );
+      }
+
+      const reservations = await this.reservationRepository.find({
+        where: { phoneNumber, isDeleted: false },
+        select: {
+          clinic: {
+            clinicName: true,
+            clinicAddress: true,
+            clinicPhone: true,
+            logoUrl: true,
+          },
+        },
+        relations: {
+          clinic: true,
+        },
+        order: { createdAt: 'DESC' },
+      });
+
+      return reservations.map((reservation) => {
+        return {
+          ...reservation,
+          no: this.genNo(reservation.id, reservation.clinicId),
+        };
+      });
+    } catch (error) {
+      logger.error('Error fetching reservations:', error);
+      throw error;
+    }
+  }
 
   @Logger()
   async create(request: ReservationRequest): Promise<any> {
@@ -35,7 +80,9 @@ export class ReservationService {
 
       const clinicId = request.clinicId;
       if (!clinicId) {
-        throw new Error('Clinic ID is required for creating a reservation.');
+        throw new BadRequestException(
+          'Clinic ID is required for creating a reservation.',
+        );
       }
 
       const clinic = await this.clinicRepository.findOne({
@@ -43,7 +90,7 @@ export class ReservationService {
       });
 
       if (!clinic) {
-        throw new Error('Clinic not found or has been deleted.');
+        throw new NotFoundException('Clinic not found or has been deleted.');
       }
 
       const newReservation = new ReservationEntity();
@@ -92,13 +139,49 @@ export class ReservationService {
       return response;
     } catch (error) {
       logger.error('Error during reservation creation:', error);
-      if (error instanceof BadRequestException) {
-        throw error; // Re-throw BadRequestException
+      throw error;
+    }
+  }
+
+  @Logger()
+  async delete(reservationId: string): Promise<any> {
+    try {
+      if (isNaN(Number(reservationId))) {
+        throw new BadRequestException('Reservation ID must be a valid number.');
       }
 
-      throw new BadRequestException(
-        this.commonService.translate('common.ERROR_CREATING_RESERVATION'),
+      const reservation = await this.reservationRepository.findOne({
+        where: { id: Number(reservationId), isDeleted: false },
+      });
+
+      if (!reservation) {
+        throw new BadRequestException(
+          'Reservation not found or has already been deleted.',
+        );
+      }
+
+      const now = this.commonService.nowDatetime();
+      reservation.isDeleted = true;
+      reservation.updatedAt = now;
+
+      return await this.reservationRepository.manager.transaction(
+        async (transactionalEntityManager) => {
+          const deletedReservation =
+            await transactionalEntityManager.save(reservation);
+
+          // Update clinic's reservation count
+          await transactionalEntityManager.update(
+            ClinicEntity,
+            { clinicId: deletedReservation.clinicId },
+            { reservationCount: () => 'reservationCount - 1' },
+          );
+
+          return deletedReservation;
+        },
       );
+    } catch (error) {
+      logger.error('Error deleting reservation:', error);
+      throw error;
     }
   }
 
@@ -107,10 +190,33 @@ export class ReservationService {
     clinic: ClinicEntity,
     no: string,
   ): Promise<void> {
-    const { email, userName, phoneNumber, address, dateReservation } =
-      reservation;
+    const {
+      email,
+      userName,
+      phoneNumber,
+      address,
+      dateReservation,
+      petState,
+      petType,
+      serviceType,
+    } = reservation;
 
     const { clinicName, clinicAddress, clinicPhone } = clinic;
+    const petTypeText =
+      petType === PetTypeEnum.DOG
+        ? 'Chó'
+        : petType === PetTypeEnum.CAT
+          ? 'Mèo'
+          : 'Khác';
+
+    const serviceTypeText =
+      serviceType === ServiceTypeEnum.SPA
+        ? 'Chăm sóc – Spa thú cưng'
+        : serviceType === ServiceTypeEnum.VACCINATION
+          ? 'Tiêm phòng & phòng ngừa'
+          : serviceType === ServiceTypeEnum.TREATMENT
+            ? 'Dịch vụ khám và điều trị'
+            : 'Dịch vụ khác';
 
     try {
       // Create email transporter with SES SMTP
@@ -147,6 +253,11 @@ export class ReservationService {
           - Phòng khám: ${clinicName}
           - Địa chỉ: ${clinicAddress}
           - Hotline: ${clinicPhone}
+
+          🔹 Tình trạng thú cưng:
+          - Tình trạng thú cưng: ${petState || 'Không có thông tin'}
+          - Loại thú cưng: ${petTypeText}
+          - Dịch vụ: ${serviceTypeText}
           
           📌 Lưu ý:
           - Vui lòng đến đúng giờ để được phục vụ tốt nhất.
@@ -184,6 +295,14 @@ export class ReservationService {
                 <li><strong>Phòng khám:</strong> ${clinicName}</li>
                 <li><strong>Địa chỉ:</strong> ${clinicAddress}</li>
                 <li><strong>Hotline:</strong> ${clinicPhone}</li>
+              </ul>
+            </div>
+            <div style="margin-top: 20px;">
+              <h3>🔹 Tình trạng thú cưng:</h3>
+              <ul>
+                <li><strong>Tình trạng thú cưng:</strong> ${petState || 'Không có thông tin'}</li>
+                <li><strong>Loại thú cưng:</strong> ${petTypeText}</li>
+                <li><strong>Dịch vụ:</strong> ${serviceTypeText}</li>
               </ul>
             </div>
 

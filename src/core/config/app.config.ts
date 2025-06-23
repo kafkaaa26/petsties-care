@@ -26,13 +26,19 @@ export const config = {
     utf8: 'utf8',
   },
   aws: {
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID || '',
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || '',
     s3: {
       region: process.env.AWS_S3_REGION || 'ap-northeast-1',
       bucketName: process.env.AWS_S3_BUCKET_NAME || '',
+      prefixExport: 'export',
+      urlDownloadExpiresIn: process.env.AWS_S3_URL_DOWNLOAD_EXPIRES_IN
+        ? Number(process.env.AWS_S3_URL_DOWNLOAD_EXPIRES_IN)
+        : 60 * 60, // default 1 hour
+      accessKeyId: process.env.AWS_S3_ACCESS_KEY_ID || '',
+      secretAccessKey: process.env.AWS_S3_SECRET_ACCESS_KEY || '',
     },
     ses: {
+      accessKeyId: process.env.AWS_SES_ACCESS_KEY_ID || '',
+      secretAccessKey: process.env.AWS_SES_SECRET_ACCESS_KEY || '',
       region: process.env.AWS_SES_REGION || 'us-east-1',
       host: process.env.EMAIL_HOST,
       port: parseInt(process.env.EMAIL_PORT || '465'),

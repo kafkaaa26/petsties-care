@@ -15,8 +15,13 @@ import { ReservationRepository } from '@repositories/reservation.repository';
 import { ClinicRepository } from '@repositories/clinic.repository';
 import { ClinicEntity } from '@entities/clinic.entity';
 import { ReservationQuery } from '../models/reservation.query';
-import { PetTypeEnum } from '@core/enums/pet-type.enum';
-import { ServiceTypeEnum } from '@core/enums/service-type.enum';
+import { Like } from 'typeorm';
+import { S3Service } from '@core/services/s3.service';
+import {
+  encodingFile,
+  getTextPetType,
+  getTextServiceType,
+} from '@core/utils/common';
 
 @Injectable()
 export class ReservationService {
@@ -24,6 +29,7 @@ export class ReservationService {
     private readonly reservationRepository: ReservationRepository,
     private readonly clinicRepository: ClinicRepository,
     private readonly commonService: CommonService,
+    private readonly s3Service: S3Service,
   ) {}
 
   @Logger()
@@ -185,6 +191,64 @@ export class ReservationService {
     }
   }
 
+  async export(): Promise<any> {
+    try {
+      const paddedMonth = String(moment().month() + 1).padStart(2, '0');
+      const year = moment().year();
+      const prefix = `${year}-${paddedMonth}`;
+
+      const reservations = await this.reservationRepository.find({
+        where: {
+          dateReservation: Like(`${prefix}%`),
+        },
+      });
+
+      let dataCsv = '';
+      dataCsv += `Mã đặt lịch,ID phòng khám,Tên phòng khám,Địa chỉ phòng khám,Số điện thoại phòng khám,Tên khách hàng,Email,Điện thoại,Địa chỉ,Ngày hẹn,Tình trạng thú cưng,Loại thú cưng,Dịch vụ\r\n`;
+      if (reservations.length) {
+        for (let i = 0; i < reservations.length; i++) {
+          const reservation = reservations[i];
+          const {
+            userName,
+            email,
+            phoneNumber,
+            address,
+            dateReservation,
+            petState,
+            petType,
+            serviceType,
+            clinic,
+          } = reservation;
+
+          const petTypeText = getTextPetType(petType);
+          const serviceTypeText = getTextServiceType(serviceType);
+          // format data csv
+          dataCsv += `"${reservation.id}","${reservation.clinicId}","${
+            clinic?.clinicName || ''
+          }","${clinic?.clinicAddress || ''}","${clinic?.clinicPhone || ''}","${userName}","${
+            email || ''
+          }","${phoneNumber}","${address || ''}","${dateReservation}","${petState || ''}","${petTypeText}","${serviceTypeText}"\r
+`;
+          // break line
+          dataCsv += '\r\n';
+        }
+      }
+
+      // upload file csv to s3
+      return await this.s3Service.uploadFileToS3AndGetSignedUrl(
+        config.aws.s3.bucketName,
+        `${year}-${paddedMonth}.csv`,
+        encodingFile(dataCsv, config.encoding.utf8),
+        `${year}-${paddedMonth}.csv`,
+      );
+    } catch (error) {
+      logger.error('Error exporting reservations:', error);
+      throw new BadRequestException(
+        'Failed to export reservations. Please try again later.',
+      );
+    }
+  }
+
   async sendReservationInfoEmail(
     reservation: ReservationEntity,
     clinic: ClinicEntity,
@@ -202,21 +266,8 @@ export class ReservationService {
     } = reservation;
 
     const { clinicName, clinicAddress, clinicPhone } = clinic;
-    const petTypeText =
-      petType === PetTypeEnum.DOG
-        ? 'Chó'
-        : petType === PetTypeEnum.CAT
-          ? 'Mèo'
-          : 'Khác';
-
-    const serviceTypeText =
-      serviceType === ServiceTypeEnum.SPA
-        ? 'Chăm sóc – Spa thú cưng'
-        : serviceType === ServiceTypeEnum.VACCINATION
-          ? 'Tiêm phòng & phòng ngừa'
-          : serviceType === ServiceTypeEnum.TREATMENT
-            ? 'Dịch vụ khám và điều trị'
-            : 'Dịch vụ khác';
+    const petTypeText = getTextPetType(petType);
+    const serviceTypeText = getTextServiceType(serviceType);
 
     try {
       // Create email transporter with SES SMTP
@@ -235,7 +286,7 @@ export class ReservationService {
       const mailOptions = {
         from: config.aws.ses.fromAddress,
         to: email,
-        // cc: config.aws.ses.fromAddress,
+        cc: config.aws.ses.fromAddress,
         subject: 'Xác nhận lịch hẹn khám thú cưng - Petstie Care',
         text: `
           Chào ${userName},

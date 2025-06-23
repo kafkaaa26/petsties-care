@@ -25,4 +25,10 @@ export class ReservationController {
     const response = await this.reservationService.delete(reservationId);
     return new HttpResponse(response).build();
   }
+
+  @Get('/export')
+  async exportReservations() {
+    const response = await this.reservationService.export();
+    return new HttpResponse(response).build();
+  }
 }

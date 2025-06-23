@@ -152,6 +152,7 @@ export class UserService {
           rating: clinic.rating,
           ratingCount: ratings.length,
           reservationCount: clinic.reservationCount,
+          logoUrl: clinic.logoUrl || '',
         },
         ratings: ratings.map((rating) => ({
           ...rating,
